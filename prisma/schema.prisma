@@ -1,0 +1,52 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                String   @unique
+  plan                 String   @default("free") @map("plan") // "free" | "pro" | "premium"
+  scheduledPlan        String?  @map("scheduled_plan") // Plan to switch to at period end (for downgrades)
+  generationsUsed      Int      @default(0) @map("generations_used")
+  generationsLimit     Int      @default(10) @map("generations_limit")
+  stripeCustomerId     String?  @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?  @unique @map("stripe_subscription_id")
+  subscriptionStatus   String?  @map("subscription_status") // "active" | "canceled" | "canceling" | "past_due" | null
+  currentPeriodEnd     DateTime? @map("current_period_end") @db.Timestamptz(6)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([email], map: "users_email_idx")
+  @@index([stripeCustomerId], map: "users_stripe_customer_id_idx")
+  @@map("users")
+}
+
+model Generation {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String   @map("user_id") @db.Uuid
+  predictionId       String?  @map("prediction_id")
+  status             String   @default("processing") @map("status")
+  title              String?
+  imageUrl           String?  @map("image_url")
+  uploadedImageUrl   String?  @map("uploaded_image_url")
+  selectedProps      Json?    @map("selected_props")
+  selectedTemplate   String?  @map("selected_template")
+  error              String?  @map("error")
+  fileSize           String?  @map("file_size")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId], map: "generations_user_id_idx")
+  @@index([createdAt(sort: Desc)], map: "generations_created_at_idx")
+  @@index([status], map: "generations_status_idx")
+  @@map("generations")
+}
